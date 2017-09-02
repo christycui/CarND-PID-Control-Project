@@ -23,6 +23,7 @@ public:
   int t;
   double tolerance;
   double best_error;
+  bool initialized;
 
   /*
   * Constructor

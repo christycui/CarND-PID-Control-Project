@@ -23,6 +23,7 @@ PID::PID() {
   t = 0;
   tolerance = 0.2;
   best_error = 1000;
+  initialized = false;
 }
 
 PID::~PID() {}
@@ -51,7 +52,7 @@ double PID::Steer(double current_cte) {
   p_error = current_cte;
   d_error = current_cte - prev_cte;
   i_error = TotalError(current_cte);
-  double steer = - p_error * p[0] - d_error * p[1] - i_error * p[2];
+  double steer = - 0.1 * p_error * p[0] - d_error * p[1] - 0.01 * i_error * p[2];
   UpdateError(current_cte);
   return steer;
 }

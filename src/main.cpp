@@ -67,6 +67,10 @@ int main()
           * another PID controller to control the speed!
           */
 
+          if (pid.initialized == false) {
+            pid.prev_cte = 0;
+            pid.initialized = true;
+          }
           if (pid.found_best_error == false) {
             // use twiddle to find best PID gains
             if (pid.found_error == false) {
@@ -98,7 +102,6 @@ int main()
               if (pid.p[0] + pid.p[1] + pid.p[2] > pid.tolerance) {
                 if (pid.twiddle_up[param_int] == false) {
                   pid.p[param_int] += pid.dp[param_int];
-                  reset_simulator(ws);
                   pid.Init(pid.p[0], pid.p[1], pid.p[2]);
                   steer_value = pid.Steer(cte);
                   pid.twiddle_up[param_int] = true;
@@ -110,7 +113,6 @@ int main()
                   } else {
                     pid.p[param_int] -= 2*pid.dp[param_int];
                     pid.twiddle_down[param_int] = true;
-                    reset_simulator(ws);
                     pid.Init(pid.p[0], pid.p[1], pid.p[2]);
                     steer_value = pid.Steer(cte);
                   }
@@ -136,13 +138,23 @@ int main()
             // drive
             steer_value = pid.Steer(cte);
           }
+
+          if (steer_value > 1) {
+            steer_value = 1;
+          } else if (steer_value < -1) {
+            steer_value = -1;
+          }
           
           // DEBUG
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 0.3;
+          if (speed >= 30 || steer_value > 0.1) {
+            msgJson["throttle"] = 0;
+          } else {
+            msgJson["throttle"] = 0.3;
+          }
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
