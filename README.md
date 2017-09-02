@@ -1,92 +1,18 @@
-# CarND-Controls-PID
-Self-Driving Car Engineer Nanodegree Program
-
+# PID Controller
+Car successfully drives around the loop in the simulator with an implemention of the PID controller.
 ---
 
-## Dependencies
+## P, I, D
+The steering angle of the vehecle is decided by three components: P, I and D.
+* P: P is proportional to the CTE (cross-track error)
+* I: I is the integral of CTE from past iterations
+* D: D is the difference between current CTE and last CTE measured
 
-* cmake >= 3.5
- * All OSes: [click here for installation instructions](https://cmake.org/install/)
-* make >= 4.1
-  * Linux: make is installed by default on most Linux distros
-  * Mac: [install Xcode command line tools to get make](https://developer.apple.com/xcode/features/)
-  * Windows: [Click here for installation instructions](http://gnuwin32.sourceforge.net/packages/make.htm)
-* gcc/g++ >= 5.4
-  * Linux: gcc / g++ is installed by default on most Linux distros
-  * Mac: same deal as make - [install Xcode command line tools]((https://developer.apple.com/xcode/features/)
-  * Windows: recommend using [MinGW](http://www.mingw.org/)
-* [uWebSockets](https://github.com/uWebSockets/uWebSockets)
-  * Run either `./install-mac.sh` or `./install-ubuntu.sh`.
-  * If you install from source, checkout to commit `e94b6e1`, i.e.
-    ```
-    git clone https://github.com/uWebSockets/uWebSockets 
-    cd uWebSockets
-    git checkout e94b6e1
-    ```
-    Some function signatures have changed in v0.14.x. See [this PR](https://github.com/udacity/CarND-MPC-Project/pull/3) for more details.
-* Simulator. You can download these from the [project intro page](https://github.com/udacity/self-driving-car-sim/releases) in the classroom.
+For example, when the vehicle is first started, its initial CTE is 0.7598 meters. The P error is therefore 0.7598; the D error is zero because there was no previous measurement and the I error is 0.7598 because that's the sum of all measurements so far (1 measurement). 
 
-There's an experimental patch for windows in this [PR](https://github.com/udacity/CarND-PID-Control-Project/pull/3)
+## Selection of hyperparameters
+The coefficients of P, I, D are dynamically chosen by the twiddle algorithm (aka Coordinate Ascent). The initial values I chose are {0, 0, 0} and the change values are {1, 1, 1}. 
 
-## Basic Build Instructions
+In addition to the twiddle algorithm, I manually added different coefficients in front of the P error, I error and D error. They are {0.1, 0.01 and 1}. This is because we know desirable steering angle is in the range of [-1, 1] and CTE measurement is in the range of [-5, 5], assuming the road is 10 meters wide. Therefore, we want the magnitude of P error to be 0.1 of its original value. For the D error, it is the difference between two measurements given delta_t which is 0.1s in the simulator, it is already in the expected range so we don't change the scale and keep it at 1. Lastly, for the I error, considering the fact that every 0.1s a new CTE is added, we scale it down to 0.01 of its original value. 
 
-1. Clone this repo.
-2. Make a build directory: `mkdir build && cd build`
-3. Compile: `cmake .. && make`
-4. Run it: `./pid`. 
-
-## Editor Settings
-
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
-
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
-
-## Code Style
-
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
-
-## Project Instructions and Rubric
-
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
-
-More information is only accessible by people who are already enrolled in Term 2
-of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/e8235395-22dd-4b87-88e0-d108c5e5bbf4/concepts/6a4d8d42-6a04-4aa6-b284-1697c0fd6562)
-for instructions and the project rubric.
-
-## Hints!
-
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
-
-## Call for IDE Profiles Pull Requests
-
-Help your fellow students!
-
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to we ensure
-that students don't feel pressured to use one IDE or another.
-
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
-
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
-
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
-
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
-
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
+Continuing with the example in the previous section (with initial CTE 0.7598), the steering angle therefore is calculated as 0.1\*0.7598 (P) + 0.01*0.7598 (I) + 0 (D) = 0.084.
