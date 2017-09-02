@@ -28,17 +28,26 @@ std::string hasData(std::string s) {
   return "";
 }
 
+// Resetting the Simulator
+void reset_simulator(uWS::WebSocket<uWS::SERVER>& ws){
+  std::string msg("42[\"reset\",{}]");
+  ws.send(msg.data(),msg.length(), uWS::OpCode::TEXT);
+}
+
 int main()
 {
   uWS::Hub h;
 
   PID pid;
   // TODO: Initialize the pid variable.
+  pid.Init(1, 1, 1);
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
+    int n = 100;
+    int param_int = -1;
     if (length && length > 2 && data[0] == '4' && data[1] == '2')
     {
       auto s = hasData(std::string(data).substr(0, length));
@@ -50,13 +59,83 @@ int main()
           double cte = std::stod(j[1]["cte"].get<std::string>());
           double speed = std::stod(j[1]["speed"].get<std::string>());
           double angle = std::stod(j[1]["steering_angle"].get<std::string>());
-          double steer_value;
+          double steer_value = 0;
           /*
           * TODO: Calcuate steering value here, remember the steering value is
           * [-1, 1].
           * NOTE: Feel free to play around with the throttle and speed. Maybe use
           * another PID controller to control the speed!
           */
+
+          if (pid.found_best_error == false) {
+            // use twiddle to find best PID gains
+            if (pid.found_error == false) {
+              steer_value = pid.Steer(cte);
+              if (pid.t > 2*n) {
+                pid.error = pid.error / n; // average the error
+                pid.found_error = true;
+              } else if (pid.t > n && pid.t <= 2*n) {
+                pid.error = pid.error + cte*cte;
+              }
+            } else {
+              // iterate through kp, ki, kd
+              for (int i=0; i<pid.dp.size(); i++) {
+                param_int = -1;
+                if (pid.twiddle_mark[i] == false) {
+                  param_int = i;
+                  break;
+                }
+              }
+              
+              if (param_int == -1) {
+                // restart iteration again
+                pid.twiddle_mark = {false, false, false};
+                pid.twiddle_up = {false, false, false};
+                pid.twiddle_down = {false, false, false};
+                param_int = 0;
+              }
+              
+              if (pid.p[0] + pid.p[1] + pid.p[2] > pid.tolerance) {
+                if (pid.twiddle_up[param_int] == false) {
+                  pid.p[param_int] += pid.dp[param_int];
+                  reset_simulator(ws);
+                  pid.Init(pid.p[0], pid.p[1], pid.p[2]);
+                  steer_value = pid.Steer(cte);
+                  pid.twiddle_up[param_int] = true;
+                } else if (pid.twiddle_down[param_int] == false) {
+                  if (pid.error < pid.best_error) {
+                    pid.best_error = pid.error;
+                    pid.dp[param_int] = pid.dp[param_int] * 1.1;
+                    pid.twiddle_mark[param_int] = true;
+                  } else {
+                    pid.p[param_int] -= 2*pid.dp[param_int];
+                    pid.twiddle_down[param_int] = true;
+                    reset_simulator(ws);
+                    pid.Init(pid.p[0], pid.p[1], pid.p[2]);
+                    steer_value = pid.Steer(cte);
+                  }
+                } else {
+                  if (pid.error < pid.best_error) {
+                    pid.best_error = pid.error;
+                    pid.dp[param_int] = pid.dp[param_int] * 1.1;
+                    pid.twiddle_mark[param_int] = true;
+                  } else {
+                    // add back if not best err
+                    pid.p[param_int] = pid.p[param_int] + pid.dp[param_int];
+                    pid.dp[param_int] = pid.dp[param_int] * 0.9;
+                    pid.twiddle_mark[param_int] = true;
+                  }
+                }
+              } else {
+                // best params are found
+                pid.found_best_error = true;
+                std::cout << "best_err: " << pid.best_error << std::endl;
+              }
+            }
+          } else {
+            // drive
+            steer_value = pid.Steer(cte);
+          }
           
           // DEBUG
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
@@ -67,7 +146,7 @@ int main()
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-        }
+        } 
       } else {
         // Manual driving
         std::string msg = "42[\"manual\",{}]";
