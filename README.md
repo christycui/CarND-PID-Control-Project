@@ -1,6 +1,7 @@
 # PID Controller
+
 Car successfully drives around the loop in the simulator with an implemention of the PID controller.
----
+
 
 ## P, I, D
 The steering angle of the vehecle is decided by three components: P, I and D.
