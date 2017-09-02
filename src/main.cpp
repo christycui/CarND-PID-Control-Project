@@ -75,6 +75,7 @@ int main()
               } else if (pid.t > n && pid.t <= 2*n) {
                 pid.error = pid.error + cte*cte;
               }
+              pid.t += 1;
             } else {
               // iterate through kp, ki, kd
               for (int i=0; i<pid.dp.size(); i++) {
@@ -141,6 +142,9 @@ int main()
           
           // DEBUG
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+          std::cout << "best_error: " << pid.best_error << std::endl;
+          std::cout << "error: " << pid.error << std::endl;
+          std::cout << "t: " << pid.t << std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
